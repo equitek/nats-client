@@ -31,9 +31,10 @@ import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.IORef
 import Data.Pool
 import Data.Typeable
-import Network
 import Network.Nats.Protocol
-import System.IO (Handle, BufferMode(LineBuffering), hClose, hSetBuffering)
+import Network.Socket hiding (connect)
+import qualified Network.Socket as S
+import System.IO
 import System.Log.Logger
 import System.Random
 import System.Timeout
@@ -81,9 +82,18 @@ defaultNatsHost = "127.0.0.1"
 defaultNatsPort :: PortNumber
 defaultNatsPort = 4222 :: PortNumber
 
+connectTo :: HostName -> PortNumber -> IO Handle
+connectTo ho po = do
+  let hints = defaultHints { addrSocketType = Stream }
+  addr:_ <- getAddrInfo (Just hints) (Just ho) (Just $ show po)
+  sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+  S.connect sock (addrAddress addr)
+  socketToHandle sock ReadWriteMode
+
 makeNatsServerConnection :: (MonadThrow m, Connection m) => ConnectionSettings -> MVar (S.Set (HostName, PortNumber)) -> m NatsServerConnection
 makeNatsServerConnection (ConnectionSettings ho po) srvs = do
-    mh <- liftIO $ timeout defaultTimeout $ connectTo ho $ PortNumber po
+    mh <- liftIO $ timeout defaultTimeout $ connectTo ho po
+
     case mh of
         Nothing -> do
             liftIO $ warningM "Network.Nats.Client" $ "Timed out connecting to server: " ++ (show ho) ++ ":" ++ (show po)
@@ -121,7 +131,7 @@ withNats :: (MonadMask m, MonadIO m) => ConnectionSettings -> (NatsClient -> m b
 withNats connectionSettings f = bracket (connect connectionSettings 10) disconnect f
 
 -- | Publish a 'BS.ByteString' to 'Subject'
-publish :: (MonadThrow m, MonadIO m, MonadBaseControl IO m) => NatsClient -> Subject -> BS.ByteString -> m ()
+publish :: NatsClient -> Subject -> BS.ByteString -> IO ()
 publish conn subj msg = withResource (connections conn) $ doPublish subj msg
 
 doPublish :: (MonadThrow m, MonadIO m) => Subject -> BS.ByteString -> NatsServerConnection -> m ()
@@ -146,7 +156,7 @@ subscribe conn subj callback _qgroup = do
     return subId
 
 -- | Unsubscribe to a 'SubjectId' (returned by 'subscribe'), with an optional max amount of additional messages to listen to
-unsubscribe :: (MonadIO m, MonadBaseControl IO m) => NatsClient -> SubscriptionId -> Maybe Int -> m ()
+unsubscribe :: NatsClient -> SubscriptionId -> Maybe Int -> IO ()
 unsubscribe conn subId msgs@(Just maxMsgs) = do
     liftIO $ withMVarMasked (subscriptions conn) $ \m -> doUnsubscribe m subId maxMsgs
     withResource (connections conn) $ \s -> liftIO $ sendUnsub (natsHandle s) subId msgs

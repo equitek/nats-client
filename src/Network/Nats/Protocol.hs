@@ -49,7 +49,7 @@ instance Connection IO where
 
 -- | Default client connection options, for convenience.
 defaultConnectionOptions :: NatsConnectionOptions
-defaultConnectionOptions = def NatsConnectionOptions
+defaultConnectionOptions = def
 
 -- | Default client timeout, in millisseconds
 defaultTimeout :: Int
