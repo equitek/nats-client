@@ -25,6 +25,7 @@ module Network.Nats.Protocol ( Connection (..)
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans
 import Data.Aeson (encode)
 import Data.ByteString.Builder
 import Data.Default (def)
