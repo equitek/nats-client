@@ -12,6 +12,7 @@ module Network.Nats.Protocol.Message ( Message(..)
 
 import Control.Applicative ((<|>))
 import Control.Monad.Catch
+import Control.Monad.Trans
 import Data.Aeson (eitherDecodeStrict)
 import Network.Nats.Protocol.Types
 import qualified Data.Attoparsec.ByteString.Char8 as A
@@ -34,7 +35,7 @@ parseServerBanner bannerBytes = do
     Right a          -> Left $ "Expected server banner, got " ++ (show a)
 
 -- | Parses a Message from a ByteString
-parseMessage :: MonadThrow m => BS.ByteString -> m Message
+parseMessage :: (MonadIO m, MonadThrow m) => BS.ByteString -> m Message
 parseMessage m =
   case A.parseOnly messageParser m of
     Left  err -> do
