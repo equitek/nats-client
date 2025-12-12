@@ -38,8 +38,8 @@ parseMessage :: MonadThrow m => BS.ByteString -> m Message
 parseMessage m =
   case A.parseOnly messageParser m of
     Left  err -> do
-      BS.putStrLn "Error in parseMessage:"
-      BS.putStrLn m
+      liftIO $ BS.putStrLn "Error in parseMessage:"
+      liftIO $ BS.putStrLn m
       throwM $ makeMessageParseError err
     Right msg -> return msg
   
