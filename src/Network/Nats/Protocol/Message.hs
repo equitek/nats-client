@@ -37,7 +37,10 @@ parseServerBanner bannerBytes = do
 parseMessage :: MonadThrow m => BS.ByteString -> m Message
 parseMessage m =
   case A.parseOnly messageParser m of
-    Left  err -> throwM $ makeMessageParseError err
+    Left  err -> do
+      BS.putStrLn "Error in parseMessage:"
+      BS.putStrLn m
+      throwM $ makeMessageParseError err
     Right msg -> return msg
   
 bannerParser :: A.Parser Message
