@@ -11,11 +11,11 @@ loop client subj = B.getLine >>= publish client subj
 
 main :: IO ()
 main = withNats connectionSettings $ \client -> do
-    case createSubject "foo.*" of
+    case createSubject "tick" of
         Left err -> putStrLn $ "Invalid subject " ++ err
         Right subj -> do
             subId <- subscribe client subj (\m -> putStrLn $ "RECV: " ++ (show m)) Nothing
             unsubscribe client subId (Just 90)
             forever $ loop client subj
     where
-        connectionSettings = defaultConnectionSettings { host = "demo.nats.io" }
+        connectionSettings = defaultConnectionSettings { host = "192.168.80.2" }

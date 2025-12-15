@@ -5,22 +5,25 @@ Description : Main interface to the NATS client library
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Network.Nats.Client (
-      defaultConnectionSettings
-    , defaultNatsHost
-    , defaultNatsPort
-    , connect
-    , publish
-    , subscribe
-    , unsubscribe
-    , withNats
-    , createSubject
-    , ConnectionSettings(..)
-    , MessageHandler
-    , NatsClient
-    , Subject
-    , Message (..)
-    ) where
+module Network.Nats.Client where
+--    ( defaultConnectionSettings
+--    , defaultNatsHost
+--    , defaultNatsPort
+--    , connect
+--    , publish
+--    , subscribe
+--    , unsubscribe
+--    , withNats
+--    , createSubject
+--    , ConnectionSettings(..)
+--    , MessageHandler
+--    , NatsClient(..)
+--    , NatsServerConnection(..)
+--    , Subject
+--    , Message (..)
+--    , generateSubscriptionId
+--    , handleCompletion
+--    ) where
 
 import Control.Concurrent (forkFinally)
 import Control.Concurrent.MVar

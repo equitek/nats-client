@@ -25,6 +25,7 @@ module Network.Nats.Protocol ( Connection (..)
 
 import Control.Monad.Catch
 import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.Trans
 import Data.Aeson (encode)
 import Data.ByteString.Builder
 import Data.Default (def)
@@ -120,6 +121,10 @@ receiveServerBanner h = do
 receiveMessage :: (MonadThrow m, Connection m) => Handle -> Int -> m Message
 receiveMessage h maxBytes = do
     m <- receiveRawMessage h maxBytes
+    liftIO $ do
+      putStrLn "------ received ------"
+      BS.putStr m
+      putStrLn "------"
     parseMessage m
 
 -- | Send a CONNECT message to the server
