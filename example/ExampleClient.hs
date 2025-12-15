@@ -4,6 +4,7 @@ module Main where
 
 import Control.Monad (forever)
 import Network.Nats.Client
+import Network.Nats.Protocol.Types
 import qualified Data.ByteString as B
 
 loop :: NatsClient -> Subject -> IO ()

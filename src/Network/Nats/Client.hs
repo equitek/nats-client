@@ -188,11 +188,26 @@ handleCompletion _ _ lpool conn _          = do
 
 connectionLoop :: Handle -> Int -> (Message -> IO ()) -> IORef (Maybe Int) -> IO ()
 connectionLoop h max_payload f maxMsgsRef = do
+    bufferRef <- newIORef BS.empty
+    connectionLoopWithBuffer h max_payload f maxMsgsRef bufferRef
+
+connectionLoopWithBuffer :: Handle -> Int -> (Message -> IO ()) -> IORef (Maybe Int) -> IORef BS.ByteString -> IO ()
+connectionLoopWithBuffer h max_payload f maxMsgsRef bufferRef = do
     maxMsgs <- readIORef maxMsgsRef
     case maxMsgs of
         Just 0 -> return ()
-        _      ->
-            receiveMessage h max_payload >>= (\m -> handleMessage h f m maxMsgs) >>= atomicWriteIORef maxMsgsRef >> connectionLoop h max_payload f maxMsgsRef
+--        _      -> do
+--            receiveMessage h max_payload >>= (\m -> handleMessage h f m maxMsgs) >>= atomicWriteIORef maxMsgsRef >> connectionLoop h max_payload f maxMsgsRef
+--            msg <- receiveMessage h max_payload
+--            newMaxMsgs <- handleMessage h f msg maxMsgs
+--            atomicWriteIORef maxMsgsRef newMaxMsgs
+--            connectionLoop h max_payload f maxMsgsRef
+
+        _      -> do
+            msg <- receiveMessageBuffered h max_payload bufferRef
+            newMaxMsgs <- handleMessage h f msg maxMsgs
+            atomicWriteIORef maxMsgsRef newMaxMsgs
+            connectionLoopWithBuffer h max_payload f maxMsgsRef bufferRef
 
 -- | Attempt to create a 'Subject' from a 'BS.ByteString'
 createSubject :: BS.ByteString -> Either String Subject

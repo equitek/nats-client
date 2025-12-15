@@ -8,6 +8,7 @@ module Network.Nats.Protocol.Message ( Message(..)
                                      , parseMessage
                                      , parseServerBanner
                                      , parseSubject
+                                     , messageParser
                                      ) where
 
 import Control.Applicative ((<|>))

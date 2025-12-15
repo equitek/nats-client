@@ -13,6 +13,7 @@ module Network.Nats.Protocol ( Connection (..)
                              , defaultConnectionOptions
                              , defaultTimeout
                              , receiveMessage
+                             , receiveMessageBuffered
                              , receiveServerBanner
                              , sendConnect
                              , sendPong
@@ -29,10 +30,12 @@ import Control.Monad.Trans
 import Data.Aeson (encode)
 import Data.ByteString.Builder
 import Data.Default (def)
+import Data.IORef
 import Data.Monoid
 import Network.Nats.Protocol.Message
 import Network.Nats.Protocol.Types
 import System.IO (Handle)
+import qualified Data.Attoparsec.ByteString.Char8 as A
 import qualified Data.ByteString.Char8 as BS
 
 -- | Type for representing Queue Groups, used to implement round-robin receivers
@@ -126,6 +129,24 @@ receiveMessage h maxBytes = do
       BS.putStr m
       putStrLn "------"
     parseMessage m
+
+-- | Receive a 'Message' from the server with buffering to handle split messages
+receiveMessageBuffered :: Handle -> Int -> IORef BS.ByteString -> IO Message
+receiveMessageBuffered h maxBytes bufferRef = do
+    buffer <- readIORef bufferRef
+    case A.parse messageParser buffer of
+        A.Done remainder msg -> do
+            writeIORef bufferRef remainder
+            return msg
+        _ -> do
+            -- Buffer doesn't contain complete message, read more
+            newData <- BS.hGetSome h maxBytes
+            if BS.null newData
+                then error "receiveMessageBuffered: Connection closed unexpectedly"
+                else do
+                    let newBuffer = buffer `BS.append` newData
+                    writeIORef bufferRef newBuffer
+                    receiveMessageBuffered h maxBytes bufferRef
 
 -- | Send a CONNECT message to the server
 sendConnect :: Connection m => Handle -> NatsConnectionOptions -> m ()
