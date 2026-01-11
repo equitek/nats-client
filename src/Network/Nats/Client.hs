@@ -158,10 +158,12 @@ doPublishWithReply subj replyTo msg conn = do
           payload_length = BS.length msg
 
 -- | Generate a unique inbox subject for request-reply pattern
+-- Uses alphanumeric characters only to ensure valid NATS subject
 generateInbox :: IO BS.ByteString
 generateInbox = do
-    gen <- getStdGen
-    let suffix = take 22 $ (randoms gen :: [Char])
+    gen <- newStdGen
+    let chars = ['A'..'Z'] ++ ['a'..'z'] ++ ['0'..'9']
+        suffix = take 22 $ map (chars !!) $ randomRs (0, length chars - 1) gen
     return $ "_INBOX." `BS.append` BS.pack suffix
 
 -- | Send a request and wait for a reply (request-reply pattern)
