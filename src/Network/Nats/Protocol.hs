@@ -18,6 +18,7 @@ module Network.Nats.Protocol ( Connection (..)
                              , sendConnect
                              , sendPong
                              , sendPub
+                             , sendPubWithReply
                              , sendSub
                              , sendUnsub
                              , module Network.Nats.Protocol.Message
@@ -61,11 +62,13 @@ defaultTimeout = 1000000
 
 -- | Sendable commands
 data Command where
-    Connect     :: NatsConnectionOptions -> Command
-    Publish     :: Subject -> BS.ByteString -> Command
-    Subscribe   :: Subject -> SubscriptionId -> Maybe QueueGroup -> Command
-    Unsubscribe :: SubscriptionId -> Maybe Int -> Command
-    Pong        :: Command
+    Connect          :: NatsConnectionOptions -> Command
+    Publish          :: Subject -> BS.ByteString -> Command
+    -- | Publish with optional reply-to subject for request-reply pattern
+    PublishWithReply :: Subject -> Maybe BS.ByteString -> BS.ByteString -> Command
+    Subscribe        :: Subject -> SubscriptionId -> Maybe QueueGroup -> Command
+    Unsubscribe      :: SubscriptionId -> Maybe Int -> Command
+    Pong             :: Command
     deriving (Show)
 
 -- | Render a Command into a bytestring builder
@@ -79,6 +82,13 @@ render (Publish subj payload) =
     stringUtf8 "PUB "
     <> renderSubject subj
     <> spaceBuilder
+    <> renderPayload payload
+    <> byteString lineTerminator
+render (PublishWithReply subj mReplyTo payload) =
+    stringUtf8 "PUB "
+    <> renderSubject subj
+    <> spaceBuilder
+    <> maybe mempty (\r -> byteString r <> spaceBuilder) mReplyTo
     <> renderPayload payload
     <> byteString lineTerminator
 render (Subscribe subj subId _qgroup) =
@@ -155,6 +165,10 @@ sendConnect h opts = sendCommand h $ Connect opts
 -- | Send a publish request to the server
 sendPub :: Connection m => Handle -> Subject -> Int -> BS.ByteString -> m ()
 sendPub h subj _payloadLen payload = sendCommand h $ Publish subj payload
+
+-- | Send a publish request with an optional reply-to subject (for request-reply pattern)
+sendPubWithReply :: Connection m => Handle -> Subject -> Maybe BS.ByteString -> Int -> BS.ByteString -> m ()
+sendPubWithReply h subj replyTo _payloadLen payload = sendCommand h $ PublishWithReply subj replyTo payload
 
 -- | Send a Subscription request to a 'Subject', with a 'SubscriptionId' and optionally a 'QueueGroup'.
 sendSub :: Connection m => Handle -> Subject -> SubscriptionId -> Maybe QueueGroup -> m ()

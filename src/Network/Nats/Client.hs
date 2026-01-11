@@ -145,6 +145,40 @@ doPublish subj msg conn = do
     where sock = (natsHandle conn)
           payload_length = BS.length msg
 
+-- | Publish a 'BS.ByteString' to 'Subject' with a reply-to inbox for request-reply pattern
+publishWithReply :: NatsClient -> Subject -> BS.ByteString -> BS.ByteString -> IO ()
+publishWithReply conn subj replyTo msg = withResource (connections conn) $ doPublishWithReply subj replyTo msg
+
+doPublishWithReply :: (MonadThrow m, MonadIO m) => Subject -> BS.ByteString -> BS.ByteString -> NatsServerConnection -> m ()
+doPublishWithReply subj replyTo msg conn = do
+    case payload_length > (maxPayloadSize (natsInfo conn)) of
+        True  -> throwM $ PayloadTooLarge $ "Size: " ++ show payload_length ++ ", Max: " ++ show (maxPayloadSize (natsInfo conn))
+        False -> liftIO $ sendPubWithReply sock subj (Just replyTo) payload_length msg
+    where sock = (natsHandle conn)
+          payload_length = BS.length msg
+
+-- | Generate a unique inbox subject for request-reply pattern
+generateInbox :: IO BS.ByteString
+generateInbox = do
+    gen <- getStdGen
+    let suffix = take 22 $ (randoms gen :: [Char])
+    return $ "_INBOX." `BS.append` BS.pack suffix
+
+-- | Send a request and wait for a reply (request-reply pattern)
+-- Returns Nothing on timeout, Just the response payload on success
+request :: NatsClient -> Subject -> BS.ByteString -> Int -> IO (Maybe BS.ByteString)
+request conn subj msg timeoutMicros = do
+    inbox <- generateInbox
+    responseVar <- newEmptyMVar
+    let inboxSubj = Subject inbox
+        handler (Message payload) = putMVar responseVar payload
+        handler _ = return ()
+    subId <- subscribe conn inboxSubj handler Nothing
+    publishWithReply conn subj inbox msg
+    result <- timeout timeoutMicros (takeMVar responseVar)
+    unsubscribe conn subId Nothing
+    return result
+
 -- | Subscribe to a 'Subject' processing 'Message's via a 'MessageHandler'. Returns a 'SubscriptionId' used to cancel subscriptions
 subscribe :: MonadIO m => NatsClient -> Subject -> MessageHandler -> Maybe QueueGroup -> m SubscriptionId
 subscribe conn subj callback _qgroup = do
