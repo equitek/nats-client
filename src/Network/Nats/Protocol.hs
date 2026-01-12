@@ -144,15 +144,11 @@ receiveMessage h maxBytes = do
 receiveMessageBuffered :: Handle -> Int -> IORef BS.ByteString -> IO Message
 receiveMessageBuffered h maxBytes bufferRef = do
     buffer <- readIORef bufferRef
-    -- Show first 100 bytes of buffer for debugging
-    let preview = BS.take 100 buffer
-    putStrLn $ "[NATS-PROTO] buffer size=" ++ show (BS.length buffer) ++ " preview: " ++ show preview
     case A.parse messageParser buffer of
         A.Done remainder msg -> do
-            putStrLn $ "[NATS-PROTO] Parsed: " ++ show msg
             writeIORef bufferRef remainder
             return msg
-        parseResult -> do
+        _ -> do
             -- Buffer doesn't contain complete message, read more
             newData <- BS.hGetSome h maxBytes
             if BS.null newData
