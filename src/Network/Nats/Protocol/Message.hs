@@ -69,8 +69,15 @@ msgParser = do
     _subject <- subjectParser
     A.skipSpace
     _subscriptionId <- A.takeTill A.isSpace
-    _ <- A.option "" (A.takeTill A.isSpace)
     A.skipSpace
+    -- Next token could be reply-to (non-numeric) or byte count (numeric)
+    -- Peek at first char to decide
+    c <- A.peekChar'
+    if c >= '0' && c <= '9'
+      then pure ()  -- No reply-to, next is byte count
+      else do
+        _ <- A.takeTill A.isSpace  -- Consume reply-to
+        A.skipSpace
     msgLength <- A.decimal
     A.endOfLine
     payload <- A.take msgLength
