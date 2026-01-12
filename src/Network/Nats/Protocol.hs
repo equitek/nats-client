@@ -144,27 +144,23 @@ receiveMessage h maxBytes = do
 receiveMessageBuffered :: Handle -> Int -> IORef BS.ByteString -> IO Message
 receiveMessageBuffered h maxBytes bufferRef = do
     buffer <- readIORef bufferRef
-    putStrLn $ "[NATS-PROTO] receiveMessageBuffered: buffer size = " ++ show (BS.length buffer)
+    -- Show first 100 bytes of buffer for debugging
+    let preview = BS.take 100 buffer
+    putStrLn $ "[NATS-PROTO] buffer size=" ++ show (BS.length buffer) ++ " preview: " ++ show preview
     case A.parse messageParser buffer of
         A.Done remainder msg -> do
-            putStrLn $ "[NATS-PROTO] Parsed message from buffer: " ++ show msg
+            putStrLn $ "[NATS-PROTO] Parsed: " ++ show msg
             writeIORef bufferRef remainder
             return msg
         parseResult -> do
             -- Buffer doesn't contain complete message, read more
-            putStrLn $ "[NATS-PROTO] Waiting for data from handle (parse result: " ++ showParseResult parseResult ++ ")..."
             newData <- BS.hGetSome h maxBytes
-            putStrLn $ "[NATS-PROTO] Read " ++ show (BS.length newData) ++ " bytes from handle"
             if BS.null newData
                 then error "receiveMessageBuffered: Connection closed unexpectedly"
                 else do
                     let newBuffer = buffer `BS.append` newData
                     writeIORef bufferRef newBuffer
                     receiveMessageBuffered h maxBytes bufferRef
-  where
-    showParseResult (A.Fail _ _ e) = "Fail: " ++ e
-    showParseResult (A.Partial _) = "Partial"
-    showParseResult (A.Done _ _) = "Done"
 
 -- | Send a CONNECT message to the server
 sendConnect :: Connection m => Handle -> NatsConnectionOptions -> m ()
