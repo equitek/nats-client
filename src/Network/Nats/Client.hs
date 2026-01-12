@@ -231,16 +231,12 @@ connectionLoopWithBuffer :: Handle -> Int -> (Message -> IO ()) -> IORef (Maybe 
 connectionLoopWithBuffer h max_payload f maxMsgsRef bufferRef = do
     maxMsgs <- readIORef maxMsgsRef
     case maxMsgs of
-        Just 0 -> return ()
---        _      -> do
---            receiveMessage h max_payload >>= (\m -> handleMessage h f m maxMsgs) >>= atomicWriteIORef maxMsgsRef >> connectionLoop h max_payload f maxMsgsRef
---            msg <- receiveMessage h max_payload
---            newMaxMsgs <- handleMessage h f msg maxMsgs
---            atomicWriteIORef maxMsgsRef newMaxMsgs
---            connectionLoop h max_payload f maxMsgsRef
+        Just 0 -> putStrLn "[NATS] connectionLoop exiting (maxMsgs = 0)" >> return ()
 
         _      -> do
+            putStrLn "[NATS] connectionLoop waiting for message..."
             msg <- receiveMessageBuffered h max_payload bufferRef
+            putStrLn $ "[NATS] connectionLoop received: " ++ show msg
             newMaxMsgs <- handleMessage h f msg maxMsgs
             atomicWriteIORef maxMsgsRef newMaxMsgs
             connectionLoopWithBuffer h max_payload f maxMsgsRef bufferRef
