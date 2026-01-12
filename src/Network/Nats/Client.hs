@@ -249,10 +249,13 @@ connectionLoopWithBuffer h max_payload f maxMsgsRef bufferRef = do
 createSubject :: BS.ByteString -> Either String Subject
 createSubject = parseSubject
 
+-- | Generate a unique subscription ID using alphanumeric characters only
 generateSubscriptionId :: Int -> IO SubscriptionId
 generateSubscriptionId idLength = do
-    gen <- getStdGen
-    return $ SubscriptionId $ BS.pack $ take idLength $ (randoms gen :: [Char])
+    gen <- newStdGen
+    let chars = ['A'..'Z'] ++ ['a'..'z'] ++ ['0'..'9']
+        suffix = take idLength $ map (chars !!) $ randomRs (0, length chars - 1) gen
+    return $ SubscriptionId $ BS.pack suffix
 
 handleMessage :: Handle -> (Message -> IO ()) -> Message -> Maybe Int -> IO (Maybe Int)
 handleMessage h    _ Ping            m = do
