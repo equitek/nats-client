@@ -122,7 +122,11 @@ renderPayload :: BS.ByteString -> Builder
 renderPayload p = intDec (BS.length p) <> byteString lineTerminator <> byteString p
 
 sendCommand :: Connection m => Handle -> Command -> m ()
-sendCommand h cmd = sendRawMessage h $ render cmd
+sendCommand h cmd = do
+  let bldr = render cmd
+  liftIO $ putStrLn $ "Sending " <> bldr
+  sendRawMessage h bldr
+  liftIO $ putStrLn "Sent"
 
 -- | Receive the initial server banner from an INFO message, or an error message if it cannot be parsed.
 receiveServerBanner :: Connection m => Handle -> m (Either String NatsServerInfo)
